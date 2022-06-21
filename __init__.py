@@ -1,15 +1,15 @@
 # Copyright(c) 2021-2022 Vector 35 Inc
-
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files(the "Software"), to
 # deal in the Software without restriction, including without limitation the
 # rights to use, copy, modify, merge, publish, distribute, sublicense, and / or
 # sell copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -18,13 +18,15 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+# TODO : Green highlight is getting overwritten in some cases
 # TODO : Type annotations
 
 from binaryninjaui import UIActionHandler, UIAction, FlowGraphWidget, UIContext, Menu, WidgetPane, UIActionContext
 
 from binaryninja import FlowGraph, FlowGraphNode, BinaryView, LowLevelILInstruction, Variable
 from binaryninja import Function, LowLevelILFunction, MediumLevelILFunction, HighLevelILFunction
-from binaryninja import LowLevelILBasicBlock, MediumLevelILBasicBlock, HighLevelILBasicBlock
+from binaryninja import BasicBlock, LowLevelILBasicBlock, MediumLevelILBasicBlock, HighLevelILBasicBlock
+from binaryninja import core_version
 from binaryninja.log import log_error
 from binaryninja.enums import FunctionGraphType, BranchType, HighlightStandardColor
 from binaryninja.commonil import ControlFlow, Terminal
@@ -56,9 +58,13 @@ def address_wrapper(key: int = None, func = None):
       log_error(f"Could not find function for location {hex(addr)}")
       return
 
-    llil = func.source_function.get_low_level_il_at(addr)
-    bb = None
-    if llil is not None:
+    if isinstance(func, Function):
+      llil = func.get_low_level_il_at(addr)
+      bb = llil.il_basic_block.source_block
+    else:
+      llil = func.source_function.get_low_level_il_at(addr)
+      bb = None
+    if llil is not None and bb is None:
       try:
         bb = recover_current_basic_block(llil, func.il_form)
       except:
@@ -104,40 +110,47 @@ def function_wrapper(key: int = None, func = None):
 
 
 def add_actions(key: int = 0, force: bool = False):
-  prepostfix = "\\Slices - Tanto"
+  prepostfix = "\\Tantō Slices"
   if key and force:
-    postfix = f'{prepostfix} {key}'
+    postfix = f'{prepostfix} ({key})'
   elif not key and force:
     postfix = prepostfix
   else:
     postfix = ''
 
-  UIAction.registerAction(f"Tanto\\Block Slices\\Add block to slice{postfix}")
-  UIAction.registerAction(f"Tanto\\Block Slices\\Remove block from slice{postfix}")
-  UIAction.registerAction(f"Tanto\\Variable Slices\\Add variable to slice{postfix}")
-  UIAction.registerAction(f"Tanto\\Variable Slices\\Remove variable from slice{postfix}")
+  UIAction.registerAction(f"Tanto\\Add Block to Slice{postfix}")
+  UIAction.registerAction(f"Tanto\\Remove Block from Slice{postfix}")
+  UIAction.registerAction(f"Tanto\\Add Variable to Slice{postfix}")
+  UIAction.registerAction(f"Tanto\\Remove Variable from Slice{postfix}")
   UIAction.registerAction(f"Tanto\\Clear Selection{postfix}")
 
-  UIActionHandler.globalActions().bindAction(f"Tanto\\Block Slices\\Add block to slice{postfix}", UIAction(address_wrapper(key, SlicePaneWidget.add_block_to_whitelist), address_wrapper()))
-  UIActionHandler.globalActions().bindAction(f"Tanto\\Block Slices\\Remove block from slice{postfix}", UIAction(address_wrapper(key, SlicePaneWidget.add_block_to_blacklist), address_wrapper()))
-  UIActionHandler.globalActions().bindAction(f"Tanto\\Variable Slices\\Add variable to slice{postfix}", UIAction(function_wrapper(key, SlicePaneWidget.add_variable_to_whitelist), function_wrapper()))
-  UIActionHandler.globalActions().bindAction(f"Tanto\\Variable Slices\\Remove variable from slice{postfix}", UIAction(function_wrapper(key, SlicePaneWidget.remove_variable_from_whitelist), function_wrapper()))
+  UIActionHandler.globalActions().bindAction(f"Tanto\\Add Block to Slice{postfix}", UIAction(address_wrapper(key, SlicePaneWidget.add_block_to_whitelist), address_wrapper()))
+  UIActionHandler.globalActions().bindAction(f"Tanto\\Remove Block from Slice{postfix}", UIAction(address_wrapper(key, SlicePaneWidget.add_block_to_blacklist), address_wrapper()))
+  UIActionHandler.globalActions().bindAction(f"Tanto\\Add Variable to Slice{postfix}", UIAction(function_wrapper(key, SlicePaneWidget.add_variable_to_whitelist), function_wrapper()))
+  UIActionHandler.globalActions().bindAction(f"Tanto\\Remove Variable from Slice{postfix}", UIAction(function_wrapper(key, SlicePaneWidget.remove_variable_from_whitelist), function_wrapper()))
   UIActionHandler.globalActions().bindAction(f"Tanto\\Clear Selection{postfix}", UIAction(lambda context: PANES[key][1]().clear_selection(), lambda context: True))
 
-  Menu.mainMenu("Tools").addAction(f"Tanto\\Block Slices\\Add block to slice{postfix}", "TantoGroup0", 0)
-  Menu.mainMenu("Tools").addAction(f"Tanto\\Block Slices\\Remove block from slice{postfix}", "TantoGroup0", 0)
-  Menu.mainMenu("Tools").addAction(f"Tanto\\Variable Slices\\Add variable to slice{postfix}", "TantoGroup1", 1)
-  Menu.mainMenu("Tools").addAction(f"Tanto\\Variable Slices\\Remove variable from slice{postfix}", "TantoGroup1", 1)
-  Menu.mainMenu("Tools").addAction(f"Tanto\\Clear Selection{postfix}", "TantoGroup2", 2)
+  parent_menu = "Tools"
+  if int(core_version()[4:][:4]) >= 3505:
+    parent_menu = "Plugins"
+  Menu.mainMenu(parent_menu).addAction(f"Tanto\\Add Block to Slice{postfix}", "TantoGroup0", 0)
+  Menu.mainMenu(parent_menu).addAction(f"Tanto\\Remove Block from Slice{postfix}", "TantoGroup0", 0)
+  Menu.mainMenu(parent_menu).addAction(f"Tanto\\Add Variable to Slice{postfix}", "TantoGroup1", 1)
+  Menu.mainMenu(parent_menu).addAction(f"Tanto\\Remove Variable from Slice{postfix}", "TantoGroup1", 1)
+  Menu.mainMenu(parent_menu).addAction(f"Tanto\\Clear Selection{postfix}", "TantoGroup2", 2)
 
 
 def setup_actions():
+  parent_menu = "Tools"
+  if int(core_version()[4:][:4]) >= 3505:
+    parent_menu = "Plugins"
+
   # Unregister interaction methods
   for action in UIAction.getAllRegisteredActions():
-    if action.startswith("Tanto"):
+    if action.startswith("Tanto") and action != "Tanto Slices":
       UIActionHandler.globalActions().unbindAction(action)
       UIAction.unregisterAction(action)
-      Menu.mainMenu("Tools").removeAction(action)
+      Menu.mainMenu(parent_menu).removeAction(action)
 
   # Register current set
   for key in sorted(PANES.keys()):
@@ -145,19 +158,25 @@ def setup_actions():
 
   UIAction.registerAction("Tanto\\Toggle All Highlights")
   UIAction.registerAction("Tanto\\Toggle Block Highlights")
+  UIAction.registerAction("Tanto\\Toggle Block Selection Highlight")
   UIAction.registerAction("Tanto\\Toggle Line Highlights")
   UIAction.registerAction("Tanto\\Toggle Selection Highlight")
   UIAction.registerAction("Tanto\\Toggle Missing Children Highlight")
+  UIAction.registerAction("Tanto\\Toggle Subgraph Replacement")
   UIActionHandler.globalActions().bindAction("Tanto\\Toggle All Highlights", UIAction(SlicePaneWidget.toggle_all_highlights, lambda *args: True))
   UIActionHandler.globalActions().bindAction("Tanto\\Toggle Block Highlights", UIAction(SlicePaneWidget.toggle_decomp_slice_highlight, lambda *args: True))
+  UIActionHandler.globalActions().bindAction("Tanto\\Toggle Block Selection Highlight", UIAction(SlicePaneWidget.toggle_slice_block_selection_highlight, lambda *args: True))
   UIActionHandler.globalActions().bindAction("Tanto\\Toggle Line Highlights", UIAction(SlicePaneWidget.toggle_decomp_line_highlight, lambda *args: True))
   UIActionHandler.globalActions().bindAction("Tanto\\Toggle Selection Highlight", UIAction(SlicePaneWidget.toggle_decomp_block_selection_highlight, lambda *args: True))
   UIActionHandler.globalActions().bindAction("Tanto\\Toggle Missing Children Highlight", UIAction(SlicePaneWidget.toggle_decomp_missing_children_highlight, lambda *args: True))
-  Menu.mainMenu("Tools").addAction("Tanto\\Toggle All Highlights", "TantoGroup3", 3)
-  Menu.mainMenu("Tools").addAction("Tanto\\Toggle Block Highlights", "TantoGroup3", 3)
-  Menu.mainMenu("Tools").addAction("Tanto\\Toggle Line Highlights", "TantoGroup3", 3)
-  Menu.mainMenu("Tools").addAction("Tanto\\Toggle Selection Highlight", "TantoGroup3", 3)
-  Menu.mainMenu("Tools").addAction("Tanto\\Toggle Missing Children Highlight", "TantoGroup3", 3)
+  UIActionHandler.globalActions().bindAction("Tanto\\Toggle Subgraph Replacement", UIAction(SlicePaneWidget.toggle_subgraph_replacement, lambda *args: True))
+  Menu.mainMenu(parent_menu).addAction("Tanto\\Toggle All Highlights", "TantoGroup3", 3)
+  Menu.mainMenu(parent_menu).addAction("Tanto\\Toggle Block Highlights", "TantoGroup3", 3)
+  Menu.mainMenu(parent_menu).addAction("Tanto\\Toggle Block Selection Highlight", "TantoGroup3", 3)
+  Menu.mainMenu(parent_menu).addAction("Tanto\\Toggle Line Highlights", "TantoGroup3", 3)
+  Menu.mainMenu(parent_menu).addAction("Tanto\\Toggle Selection Highlight", "TantoGroup3", 3)
+  Menu.mainMenu(parent_menu).addAction("Tanto\\Toggle Missing Children Highlight", "TantoGroup3", 3)
+  Menu.mainMenu(parent_menu).addAction("Tanto\\Toggle Subgraph Replacement", "TantoGroup4", 4)
 
 
 def get_disassembly_settings():
@@ -233,6 +252,16 @@ def get_current_variable_selection(func, hts):
   return var
 
 
+def get_insts(bb):
+  if bb is None:
+    return None
+
+  if isinstance(bb, BasicBlock):
+    return bb.disassembly_text
+  else:
+    return bb
+
+
 def instruction_contains_var(var_list, inst):
   for var in var_list:
     if inst.function.il_form in [FunctionGraphType.LowLevelILSSAFormFunctionGraph, FunctionGraphType.MediumLevelILSSAFormFunctionGraph, FunctionGraphType.MappedMediumLevelILSSAFormFunctionGraph, FunctionGraphType.HighLevelILSSAFormFunctionGraph]:
@@ -289,19 +318,6 @@ class SlicePaneWidget(QWidget):
     for action in self.flow_graph_widget.m_contextMenu.getActions().keys():
       self.flow_graph_widget.m_contextMenu.removeAction(action)
 
-    UIAction.registerAction("Toggle All Highlights")
-    UIAction.registerAction("Toggle Block Selection Highlight")
-    UIAction.registerAction("Toggle Missing Children Highlight")
-    UIAction.registerAction("Toggle Subgraph Replacement")
-    self.flow_graph_widget.m_actionHandler.bindAction("Toggle All Highlights", UIAction(lambda context: self.toggle_all_highlights(), lambda context: len(self.block_whitelist) > 0))
-    self.flow_graph_widget.m_actionHandler.bindAction("Toggle Block Selection Highlight", UIAction(lambda context: self.toggle_slice_block_selection_highlight(), lambda context: len(self.block_whitelist) > 0))
-    self.flow_graph_widget.m_actionHandler.bindAction("Toggle Missing Children Highlight", UIAction(lambda context: self.toggle_slice_missing_children_highlight(), lambda context: len(self.block_whitelist) > 0))
-    self.flow_graph_widget.m_actionHandler.bindAction("Toggle Subgraph Replacement", UIAction(lambda context: self.toggle_subgraph_replacement(), lambda context: len(self.block_whitelist) > 0))
-    self.flow_graph_widget.m_contextMenu.addAction("Toggle All Highlights", "")
-    self.flow_graph_widget.m_contextMenu.addAction("Toggle Block Selection Highlight", "")
-    self.flow_graph_widget.m_contextMenu.addAction("Toggle Missing Children Highlight", "")
-    self.flow_graph_widget.m_contextMenu.addAction("Toggle Subgraph Replacement", "")
-
   @ staticmethod
   def createPane(context):
     if context.context and context.binaryView:
@@ -318,9 +334,9 @@ class SlicePaneWidget(QWidget):
 
       widget = SlicePaneWidget(context.binaryView, n)
       if n == 0:
-        pane = WidgetPane(widget, "Slices - Tanto")
+        pane = WidgetPane(widget, "Tantō Slices")
       else:
-        pane = WidgetPane(widget, f"Slices - Tanto ({n})")
+        pane = WidgetPane(widget, f"Tantō Slices ({n})")
 
       PANES[n] = (ref(pane), ref(widget))
       context.context.openPane(pane)
@@ -329,7 +345,40 @@ class SlicePaneWidget(QWidget):
 
   @ staticmethod
   def canCreatePane(context):
-    return context.context and context.binaryView
+    # Right click menu hack
+    if context is not None:
+      view = context.view
+      if view is not None:
+        context_menu = view.contextMenu()
+
+        if len(context_menu.getActions().keys()) == 0:
+          return context.context and context.binaryView
+
+        # Remove old buttons
+        for action in context_menu.getActions().keys():
+          if "Tanto" in action:
+            context_menu.removeAction(action)
+
+        # Add current set
+        force = len(PANES.keys()) > 1
+        for key in sorted(PANES.keys()):
+          prepostfix = "\\Tantō Slices"
+          if key and force:
+            postfix = f'{prepostfix} ({key})'
+          elif not key and force:
+            postfix = prepostfix
+          else:
+            postfix = ''
+
+          if UIAction.isActionRegistered(f"Tanto\\Add Block to Slice{postfix}"):
+            context_menu.addAction(f"Tanto\\Add Block to Slice{postfix}", "TantoGroup0", 0)
+            context_menu.addAction(f"Tanto\\Remove Block from Slice{postfix}", "TantoGroup0", 0)
+            context_menu.addAction(f"Tanto\\Add Variable to Slice{postfix}", "TantoGroup1", 1)
+            context_menu.addAction(f"Tanto\\Remove Variable from Slice{postfix}", "TantoGroup1", 1)
+            context_menu.addAction(f"Tanto\\Clear Selection{postfix}", "TantoGroup2", 2)
+      return context.context and context.binaryView
+    else:
+      return False
 
   def __del__(self):
     self.flow_graph_widget = None
@@ -372,37 +421,37 @@ class SlicePaneWidget(QWidget):
     cls.update_all_graphs()
 
   @ classmethod
-  def toggle_decomp_block_selection_highlight(cls, _, __):
+  def toggle_decomp_block_selection_highlight(cls, _):
     cls.decomp_block_selection_highlight = not cls.decomp_block_selection_highlight
     cls.update_all_graphs()
 
   @ classmethod
-  def toggle_decomp_missing_children_highlight(cls, _, __):
+  def toggle_decomp_missing_children_highlight(cls, _):
     cls.decomp_missing_children_highlight = not cls.decomp_missing_children_highlight
     cls.update_all_graphs()
 
   @ classmethod
-  def toggle_decomp_line_highlight(cls, _, __):
+  def toggle_decomp_line_highlight(cls, _):
     cls.decomp_line_highlight = not cls.decomp_line_highlight
     cls.update_all_graphs()
 
   @ classmethod
-  def toggle_decomp_slice_highlight(cls, _, __):
+  def toggle_decomp_slice_highlight(cls, _):
     cls.decomp_slice_highlight = not cls.decomp_slice_highlight
     cls.update_all_graphs()
 
   @ classmethod
-  def toggle_slice_block_selection_highlight(cls):
+  def toggle_slice_block_selection_highlight(cls, _):
     cls.slice_block_selection_highlight = not cls.slice_block_selection_highlight
     cls.update_all_graphs()
 
   @ classmethod
-  def toggle_slice_missing_children_highlight(cls):
+  def toggle_slice_missing_children_highlight(cls, _):
     cls.slice_missing_children_highlight = not cls.slice_missing_children_highlight
     cls.update_all_graphs()
 
   @ classmethod
-  def toggle_subgraph_replacement(cls):
+  def toggle_subgraph_replacement(cls, _):
     cls.subgraph_replacement = not cls.subgraph_replacement
     cls.update_all_graphs()
 
@@ -422,11 +471,16 @@ class SlicePaneWidget(QWidget):
     if self.func is None:
       return
 
+    if isinstance(self.func, Function):
+      func = self.func
+    else:
+      func = self.func.source_function
+
     for bb in self.func:
       bb.set_auto_highlight(HighlightStandardColor.NoHighlightColor)
       bb.set_user_highlight(HighlightStandardColor.NoHighlightColor)
-      for inst in bb:
-        inst.function.source_function.set_auto_instr_highlight(inst.address, HighlightStandardColor.NoHighlightColor)
+      for inst in get_insts(bb):
+        func.set_auto_instr_highlight(inst.address, HighlightStandardColor.NoHighlightColor)
     self.clear_graph()
 
   def add_block_to_whitelist(self, bv, func, bb):
@@ -539,15 +593,20 @@ class SlicePaneWidget(QWidget):
   @ staticmethod
   def update_all_graphs():
     for _, widget in PANES.values():
-      widget.update_graph()
+      widget().update_graph()
 
   def update_graph(self):
     self.flow_graph_widget.paintEvent = self.flow_graph_widget_paintEvent
+    if isinstance(self.func, Function):
+      func = self.func
+    else:
+      func = self.func.source_function
+
     for bb in self.func:
       bb.set_auto_highlight(HighlightStandardColor.NoHighlightColor)
       bb.set_user_highlight(HighlightStandardColor.NoHighlightColor)
-      for inst in bb:
-        inst.function.source_function.set_auto_instr_highlight(inst.address, HighlightStandardColor.NoHighlightColor)
+      for inst in get_insts(bb):
+        func.set_auto_instr_highlight(inst.address, HighlightStandardColor.NoHighlightColor)
 
     if len(self.variable_whitelist) != 0:
       self.update_variables_slices_graph()
@@ -557,6 +616,11 @@ class SlicePaneWidget(QWidget):
   def update_block_slices_graph(self):
     function_slice = self.calculate_basic_block_slice()
 
+    if isinstance(self.func, Function):
+      func = self.func
+    else:
+      func = self.func.source_function
+
     # Highlight features in original graph
     if self.decomp_slice_highlight:
       for bb in self.func:
@@ -564,25 +628,25 @@ class SlicePaneWidget(QWidget):
           if self.decomp_slice_highlight:
             bb.set_auto_highlight(HighlightStandardColor.CyanHighlightColor)
           if self.decomp_line_highlight:
-            for inst in bb:
-              inst.function.source_function.set_auto_instr_highlight(inst.address, HighlightStandardColor.CyanHighlightColor)
+            for inst in get_insts(bb):
+              func.set_auto_instr_highlight(inst.address, HighlightStandardColor.CyanHighlightColor)
         else:
           if self.decomp_slice_highlight:
             bb.set_auto_highlight(HighlightStandardColor.RedHighlightColor)
           if self.decomp_line_highlight:
-            for inst in bb:
-              inst.function.source_function.set_auto_instr_highlight(inst.address, HighlightStandardColor.RedHighlightColor)
+            for inst in get_insts(bb):
+              func.set_auto_instr_highlight(inst.address, HighlightStandardColor.RedHighlightColor)
     if self.decomp_block_selection_highlight:
       for bb in self.block_whitelist:
         bb.set_auto_highlight(HighlightStandardColor.GreenHighlightColor)
         if self.decomp_line_highlight:
-          for inst in bb:
-            inst.function.source_function.set_auto_instr_highlight(inst.address, HighlightStandardColor.GreenHighlightColor)
+          for inst in get_insts(bb):
+            func.set_auto_instr_highlight(inst.address, HighlightStandardColor.GreenHighlightColor)
       for bb in self.block_blacklist:
         bb.set_auto_highlight(HighlightStandardColor.WhiteHighlightColor)
         if self.decomp_line_highlight:
-          for inst in bb:
-            inst.function.source_function.set_auto_instr_highlight(inst.address, HighlightStandardColor.WhiteHighlightColor)
+          for inst in get_insts(bb):
+            func.set_auto_instr_highlight(inst.address, HighlightStandardColor.WhiteHighlightColor)
 
     # Create new graph
     new_graph = FlowGraph()
@@ -633,7 +697,7 @@ class SlicePaneWidget(QWidget):
                 basic_block.set_auto_highlight(HighlightStandardColor.YellowHighlightColor)
                 if self.decomp_line_highlight:
                   for inst in basic_block:
-                    inst.function.source_function.set_auto_instr_highlight(inst.address, HighlightStandardColor.YellowHighlightColor)
+                    func.set_auto_instr_highlight(inst.address, HighlightStandardColor.YellowHighlightColor)
 
     self.flow_graph_widget.setGraph(new_graph)
 
@@ -701,30 +765,8 @@ class SlicePaneWidget(QWidget):
 
 
 # Register Dock Widget
-UIAction.registerAction("Show Slices - Tanto")
+UIAction.registerAction("Tanto Slices")
 UIActionHandler.globalActions().bindAction(
-  "Show Slices - Tanto", UIAction(SlicePaneWidget.createPane, SlicePaneWidget.canCreatePane)
-
-
+  "Tanto Slices", UIAction(SlicePaneWidget.createPane, SlicePaneWidget.canCreatePane)
 )
-Menu.mainMenu("View").addAction("Show Slices - Tanto", "Tanto")
-
-# frame = UIContext.currentViewFrameForWidget(self)
-# if frame:
-#   self.bv = frame.getCurrentBinaryView()
-#   self.func = frame.getViewLocation().getFunction()
-#   view = frame.getCurrentViewInterface()
-#   view.getCurrentOffset()
-
-# frame = UIContext.currentViewFrameForWidget(slice_widget)
-# if frame:
-#     bv = frame.getCurrentBinaryView()
-#     func = recover_current_function(frame.getViewLocation().getFunction(), frame.getViewLocation().getILViewType())
-
-
-# view_context = UIContext.activeContext()
-# self.frame = view_context.getCurrentViewFrame()
-# il_func = recover_current_function(self.frame, func)
-# if self.func != il_func:
-#   self.clear_selection(None, func)
-#   self.func = il_func
+Menu.mainMenu("View").addAction("Tanto Slices", "Pra")
