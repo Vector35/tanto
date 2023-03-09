@@ -4,7 +4,7 @@ Author: **Vector 35, Inc.**
 ## Description:
 Tantō is a plugin for [Binary Ninja](https://binary.ninja/) that slices functions so you can understand them faster.
 
-<img align="center" src="./tanto_preview.png">
+<img align="center" src="https://github.com/Vector35/tanto/blob/master/tanto_preview.png?raw=true">
 
 For a more detailed explanation of what Tantō does, please check out [this blog post](https://binary.ninja/2022/06/20/introducing-tanto.html).
 
