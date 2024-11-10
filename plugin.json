@@ -20,7 +20,7 @@
     "Windows"
   ],
   "dependencies": {},
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "Vector 35 Inc",
-  "minimumbinaryninjaversion": 6249
+  "minimumbinaryninjaversion": 3164
 }

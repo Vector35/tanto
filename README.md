@@ -12,7 +12,7 @@ For a more detailed explanation of what Tantō does, please check out [this blog
 
 This plugin requires the following minimum version of Binary Ninja:
 
-* 4.1.6249
+* 3.0.3223
 
 ## License
 

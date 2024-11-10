@@ -23,10 +23,10 @@
 
 from binaryninjaui import UIActionHandler, UIAction, FlowGraphWidget, UIContext, Menu, WidgetPane, UIActionContext
 
+import binaryninja as bn
 from binaryninja import FlowGraph, FlowGraphNode, BinaryView, LowLevelILInstruction, Variable
 from binaryninja import Function, LowLevelILFunction, MediumLevelILFunction, HighLevelILFunction
 from binaryninja import BasicBlock, LowLevelILBasicBlock, MediumLevelILBasicBlock, HighLevelILBasicBlock
-from binaryninja import core_version
 from binaryninja.log import log_error
 from binaryninja.enums import FunctionGraphType, BranchType, HighlightStandardColor
 from binaryninja.commonil import ControlFlow, Terminal
@@ -44,6 +44,20 @@ ILBasicBlock = Union[LowLevelILBasicBlock, MediumLevelILBasicBlock, HighLevelILB
 PANES: Dict[int, Tuple[WidgetPane, 'SlicePaneWidget']] = dict()
 
 
+def get_version() -> int:
+  try:
+    return bn.core_version_info().build
+  except:
+    return int(bn.core_version()[4:][:4])
+
+
+# Compatibility for older versions
+def get_view_type(vc) -> FunctionGraphType:
+  if get_version() >= 6249:
+    return vc.getCurrentViewFrame().getViewLocation().getILViewType().view_type
+  return vc.getCurrentViewFrame().getViewLocation().getILViewType()
+
+
 def address_wrapper(key: int = None, func = None):
   def get_bb(context: UIActionContext) -> Optional[Tuple[BinaryView, ILFunction, ILBasicBlock]]:
     view_context = context.context  # Chaining this fully in the next line causes this object to be deleted before it's done being used
@@ -51,7 +65,7 @@ def address_wrapper(key: int = None, func = None):
       return
 
     bv = context.binaryView
-    func = recover_current_function(context.function, view_context.getCurrentViewFrame().getViewLocation().getILViewType().view_type)
+    func = recover_current_function(context.function, get_view_type(view_context))
     addr: int = context.address
 
     if bv is None or func is None or addr == 0:
@@ -90,7 +104,7 @@ def function_wrapper(key: int = None, func = None):
       return
 
     bv = context.binaryView
-    func = recover_current_function(context.function, view_context.getCurrentViewFrame().getViewLocation().getILViewType().view_type)
+    func = recover_current_function(context.function, get_view_type(view_context))
     addr: int = context.address
 
     if bv is None or func is None or addr == 0:
@@ -130,7 +144,9 @@ def add_actions(key: int = 0, force: bool = False):
   UIActionHandler.globalActions().bindAction(f"Tanto\\Remove Variable from Slice{postfix}", UIAction(function_wrapper(key, SlicePaneWidget.remove_variable_from_whitelist), function_wrapper()))
   UIActionHandler.globalActions().bindAction(f"Tanto\\Clear Selection{postfix}", UIAction(lambda context: PANES[key][1]().clear_selection(), lambda context: True))
 
-  parent_menu = "Plugins"
+  parent_menu = "Tools"
+  if get_version() >= 3505:
+    parent_menu = "Plugins"
   Menu.mainMenu(parent_menu).addAction(f"Tanto\\Add Block to Slice{postfix}", "TantoGroup0", 0)
   Menu.mainMenu(parent_menu).addAction(f"Tanto\\Remove Block from Slice{postfix}", "TantoGroup0", 0)
   Menu.mainMenu(parent_menu).addAction(f"Tanto\\Add Variable to Slice{postfix}", "TantoGroup1", 1)
@@ -139,7 +155,9 @@ def add_actions(key: int = 0, force: bool = False):
 
 
 def setup_actions():
-  parent_menu = "Plugins"
+  parent_menu = "Tools"
+  if get_version() >= 3505:
+    parent_menu = "Plugins"
 
   # Unregister interaction methods
   for action in UIAction.getAllRegisteredActions():
