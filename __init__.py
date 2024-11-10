@@ -1,7 +1,7 @@
-# Copyright(c) 2021-2022 Vector 35 Inc
+# Copyright(c) 2021-2024 Vector 35 Inc
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files(the "Software"), to
+# of this software and associated documentation files (the "Software"), to
 # deal in the Software without restriction, including without limitation the
 # rights to use, copy, modify, merge, publish, distribute, sublicense, and / or
 # sell copies of the Software, and to permit persons to whom the Software is
@@ -51,7 +51,7 @@ def address_wrapper(key: int = None, func = None):
       return
 
     bv = context.binaryView
-    func = recover_current_function(context.function, view_context.getCurrentViewFrame().getViewLocation().getILViewType())
+    func = recover_current_function(context.function, view_context.getCurrentViewFrame().getViewLocation().getILViewType().view_type)
     addr: int = context.address
 
     if bv is None or func is None or addr == 0:
@@ -90,7 +90,7 @@ def function_wrapper(key: int = None, func = None):
       return
 
     bv = context.binaryView
-    func = recover_current_function(context.function, view_context.getCurrentViewFrame().getViewLocation().getILViewType())
+    func = recover_current_function(context.function, view_context.getCurrentViewFrame().getViewLocation().getILViewType().view_type)
     addr: int = context.address
 
     if bv is None or func is None or addr == 0:
@@ -130,9 +130,7 @@ def add_actions(key: int = 0, force: bool = False):
   UIActionHandler.globalActions().bindAction(f"Tanto\\Remove Variable from Slice{postfix}", UIAction(function_wrapper(key, SlicePaneWidget.remove_variable_from_whitelist), function_wrapper()))
   UIActionHandler.globalActions().bindAction(f"Tanto\\Clear Selection{postfix}", UIAction(lambda context: PANES[key][1]().clear_selection(), lambda context: True))
 
-  parent_menu = "Tools"
-  if int(core_version()[4:][:4]) >= 3505:
-    parent_menu = "Plugins"
+  parent_menu = "Plugins"
   Menu.mainMenu(parent_menu).addAction(f"Tanto\\Add Block to Slice{postfix}", "TantoGroup0", 0)
   Menu.mainMenu(parent_menu).addAction(f"Tanto\\Remove Block from Slice{postfix}", "TantoGroup0", 0)
   Menu.mainMenu(parent_menu).addAction(f"Tanto\\Add Variable to Slice{postfix}", "TantoGroup1", 1)
@@ -141,9 +139,7 @@ def add_actions(key: int = 0, force: bool = False):
 
 
 def setup_actions():
-  parent_menu = "Tools"
-  if int(core_version()[4:][:4]) >= 3505:
-    parent_menu = "Plugins"
+  parent_menu = "Plugins"
 
   # Unregister interaction methods
   for action in UIAction.getAllRegisteredActions():
@@ -186,6 +182,7 @@ def get_disassembly_settings():
 
 
 def recover_current_basic_block(instr: LowLevelILInstruction, il_form: FunctionGraphType):
+  assert isinstance(il_form, FunctionGraphType)
   if il_form == FunctionGraphType.NormalFunctionGraph:
     return instr.il_basic_block.source_block
   elif il_form == FunctionGraphType.LiftedILFunctionGraph:
@@ -207,10 +204,12 @@ def recover_current_basic_block(instr: LowLevelILInstruction, il_form: FunctionG
   elif il_form == FunctionGraphType.HighLevelILSSAFormFunctionGraph:
     return instr.hlil.ssa_form.il_basic_block
   else:
+    log_error(f"IL form {il_form.name} not supported in Tanto")
     return None
 
 
 def recover_current_function(func: Function, il_form: FunctionGraphType):
+  assert isinstance(il_form, FunctionGraphType)
   if il_form == FunctionGraphType.NormalFunctionGraph:
     return func
   elif il_form == FunctionGraphType.LowLevelILFunctionGraph:
@@ -232,6 +231,7 @@ def recover_current_function(func: Function, il_form: FunctionGraphType):
   elif il_form == FunctionGraphType.HighLevelILSSAFormFunctionGraph:
     return func.hlil.ssa_form
   else:
+    log_error(f"IL form {il_form.name} not supported in Tanto")
     return None
 
 
@@ -297,9 +297,9 @@ class SlicePaneWidget(QWidget):
     # Slice vars
     self.bv: BinaryView = None
     self.func = None
-    self.block_blacklist = []
-    self.block_whitelist = []
-    self.variable_whitelist = []
+    self.excluded_blocks = []
+    self.included_blocks = []
+    self.included_variables = []
 
     # Binary Graph Area
     self.flow_graph_widget = FlowGraphWidget(None, self.bv)
@@ -464,9 +464,9 @@ class SlicePaneWidget(QWidget):
       self.flow_graph_widget.setGraph(None)
 
   def clear_selection(self):
-    self.block_blacklist.clear()
-    self.block_whitelist.clear()
-    self.variable_whitelist.clear()
+    self.excluded_blocks.clear()
+    self.included_blocks.clear()
+    self.included_variables.clear()
 
     if self.func is None:
       return
@@ -484,35 +484,35 @@ class SlicePaneWidget(QWidget):
     self.clear_graph()
 
   def add_block_to_whitelist(self, bv, func, bb):
-    self.variable_whitelist = []  # Only do variable slices or block slices at any given time
+    self.included_variables = []  # Only do variable slices or block slices at any given time
 
     if self.bv is not None and self.func is not None and (self.bv != bv or self.func != func):
       self.clear_selection()
     self.bv = bv
     self.func = func
 
-    if bb in self.block_blacklist:
-      self.block_blacklist.remove(bb)
-    self.block_whitelist.append(bb)
+    if bb in self.excluded_blocks:
+      self.excluded_blocks.remove(bb)
+    self.included_blocks.append(bb)
     self.update_graph()
 
   def add_block_to_blacklist(self, bv, func, bb):
-    self.variable_whitelist = []  # Only do variable slices or block slices at any given time
+    self.included_variables = []  # Only do variable slices or block slices at any given time
 
     if self.bv is not None and self.func is not None and (self.bv != bv or self.func != func):
       self.clear_selection()
     self.bv = bv
     self.func = func
 
-    if bb in self.block_whitelist:
-      self.block_whitelist.remove(bb)
-    self.block_blacklist.append(bb)
+    if bb in self.included_blocks:
+      self.included_blocks.remove(bb)
+    self.excluded_blocks.append(bb)
     self.update_graph()
 
   def add_variable_to_whitelist(self, bv, func, var):
     # Only do variable slices or block slices at any given time
-    self.block_whitelist = []
-    self.block_blacklist = []
+    self.included_blocks = []
+    self.excluded_blocks = []
 
     if self.bv is not None and self.func is not None and (self.bv != bv or self.func != func):
       self.clear_selection()
@@ -520,14 +520,14 @@ class SlicePaneWidget(QWidget):
     self.func = func
 
     if var is not None:
-      if var not in self.variable_whitelist:
-        self.variable_whitelist.append(var)
+      if var not in self.included_variables:
+        self.included_variables.append(var)
       self.update_graph()
 
   def remove_variable_from_whitelist(self, bv, func, var):
     # Only do variable slices or block slices at any given time
-    self.block_whitelist = []
-    self.block_blacklist = []
+    self.included_blocks = []
+    self.excluded_blocks = []
 
     if self.bv is not None and self.func is not None and (self.bv != bv or self.func != func):
       self.clear_selection()
@@ -538,13 +538,13 @@ class SlicePaneWidget(QWidget):
     self.func = func
 
     if var is not None:
-      if var in self.variable_whitelist:
-        self.variable_whitelist.remove(var)
+      if var in self.included_variables:
+        self.included_variables.remove(var)
       self.update_graph()
 
   def calculate_basic_block_slice(self):
     def reach_up(il_bb, visited):
-      if il_bb in visited or il_bb in self.block_blacklist:
+      if il_bb in visited or il_bb in self.excluded_blocks:
         return []
       visited.append(il_bb)
 
@@ -554,7 +554,7 @@ class SlicePaneWidget(QWidget):
       return result
 
     def reach_down(il_bb, visited):
-      if il_bb in visited or il_bb in self.block_blacklist:
+      if il_bb in visited or il_bb in self.excluded_blocks:
         return []
       visited.append(il_bb)
 
@@ -564,7 +564,7 @@ class SlicePaneWidget(QWidget):
       return result
 
     result = set()
-    for bb in self.block_whitelist:
+    for bb in self.included_blocks:
       result.update(set(reach_up(bb, []) + reach_down(bb, [])))
     return result
 
@@ -590,7 +590,7 @@ class SlicePaneWidget(QWidget):
 
     return reach_down(bb, function_slice, set())
 
-  @ staticmethod
+  @staticmethod
   def update_all_graphs():
     for _, widget in PANES.values():
       widget().update_graph()
@@ -608,9 +608,9 @@ class SlicePaneWidget(QWidget):
       for inst in get_insts(bb):
         func.set_auto_instr_highlight(inst.address, HighlightStandardColor.NoHighlightColor)
 
-    if len(self.variable_whitelist) != 0:
+    if len(self.included_variables) != 0:
       self.update_variables_slices_graph()
-    elif len(self.block_whitelist) != 0:
+    elif len(self.included_blocks) != 0:
       self.update_block_slices_graph()
 
   def update_block_slices_graph(self):
@@ -637,12 +637,12 @@ class SlicePaneWidget(QWidget):
             for inst in get_insts(bb):
               func.set_auto_instr_highlight(inst.address, HighlightStandardColor.RedHighlightColor)
     if self.decomp_block_selection_highlight:
-      for bb in self.block_whitelist:
+      for bb in self.included_blocks:
         bb.set_auto_highlight(HighlightStandardColor.GreenHighlightColor)
         if self.decomp_line_highlight:
           for inst in get_insts(bb):
             func.set_auto_instr_highlight(inst.address, HighlightStandardColor.GreenHighlightColor)
-      for bb in self.block_blacklist:
+      for bb in self.excluded_blocks:
         bb.set_auto_highlight(HighlightStandardColor.WhiteHighlightColor)
         if self.decomp_line_highlight:
           for inst in get_insts(bb):
@@ -668,7 +668,7 @@ class SlicePaneWidget(QWidget):
         line.highlight = HighlightStandardColor.NoHighlightColor
 
       # Duplicate selection highlight in new graph
-      if self.slice_block_selection_highlight and basic_block in self.block_whitelist:
+      if self.slice_block_selection_highlight and basic_block in self.included_blocks:
         new_node.highlight = HighlightStandardColor.GreenHighlightColor
 
       new_graph.append(new_node)
@@ -703,7 +703,7 @@ class SlicePaneWidget(QWidget):
 
   def update_variables_slices_graph(self):
     keep_indexes = set()
-    for var in self.variable_whitelist:
+    for var in self.included_variables:
       for bb in self.func:
         for inst in bb:
           if self.func.il_form in [FunctionGraphType.LowLevelILSSAFormFunctionGraph, FunctionGraphType.MediumLevelILSSAFormFunctionGraph, FunctionGraphType.MappedMediumLevelILSSAFormFunctionGraph, FunctionGraphType.HighLevelILSSAFormFunctionGraph]:
@@ -734,7 +734,7 @@ class SlicePaneWidget(QWidget):
       saved_lines = []
       for inst in basic_block:
         if inst.instr_index in keep_indexes:
-          if instruction_contains_var(self.variable_whitelist, inst):
+          if instruction_contains_var(self.included_variables, inst):
             saved_lines += [line for line in lines if line.il_instruction == inst]
             inst.function.source_function.set_auto_instr_highlight(inst.address, HighlightStandardColor.GreenHighlightColor)
           elif isinstance(inst, ControlFlow) and not isinstance(inst, Terminal):
