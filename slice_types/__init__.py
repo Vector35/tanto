@@ -1,4 +1,4 @@
-# Copyright(c) 2022-2025 Vector 35 Inc
+# Copyright(c) 2025 Vector 35 Inc
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to
@@ -18,16 +18,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-import tanto
-
-from .tanto_view import *
-from .slices import *
-from .menus import *
-from .helpers import *
-from .slice_types import *
-
-from binaryninja import Settings
-from binaryninjaui import ViewType
-
-Settings().register_group("tanto", "Tanto Settings")
-ViewType.registerViewType(tanto.tanto_view.TantoViewType())
+from .basic_block_slice import *
+from .butterfly_slice import *
+from .dynamic_call_graph import *
+from .full_call_graph import *
+from .scatter_slice import *
+from .source_to_sink import *
+from .variable_slice import *
