@@ -296,7 +296,11 @@ class TantoView(QWidget, View):
 
     # Remove from main right click menu
     context = UIContext.activeContext()
-    view = context.getCurrentView()
+    try:
+      view = context.getCurrentView()
+    except:
+      view = None
+  
     if view is not None:
       if callable(context_menu := view.contextMenu):
         context_menu = context_menu()
