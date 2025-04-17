@@ -295,17 +295,16 @@ class TantoView(QWidget, View):
         Menu.mainMenu("Plugins").removeAction(action)
 
     # Remove from main right click menu
-    context = UIContext.activeContext()
-    view = context.getCurrentView()
-    if view is not None:
-      if callable(context_menu := view.contextMenu):
-        context_menu = context_menu()
-        self.disassembly_settings = view.getDisassemblySettings()  # Since we know this is the main view area, we can cache this
+    if (context := UIContext.activeContext()) is not None:
+      if (view := context.getCurrentView()) is not None:
+        if callable(context_menu := view.contextMenu):
+          context_menu = context_menu()
+          self.disassembly_settings = view.getDisassemblySettings()  # Since we know this is the main view area, we can cache this
 
-      # Remove old buttons
-      for action in context_menu.getActions().keys():
-        if "Tanto" in action:
-          context_menu.removeAction(action)
+        # Remove old buttons
+        for action in context_menu.getActions().keys():
+          if "Tanto" in action:
+            context_menu.removeAction(action)
 
   def __registrate_action(self, name: str, action_wrapper, is_valid_wrapper, menu_group: str = "", menu_order: int = 0):
     # Plugin Menu

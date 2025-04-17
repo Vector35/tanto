@@ -24,4 +24,4 @@ This plugin has been released under the [MIT license](./LICENSE.txt).
 
 ## Insomni'Hack 2025 Slides
 
-Here are the slides for the talk I gave at Insomni'Hack 2025: ["A Slice of" Modern Program Analysis](./A%20Slice%20of%20Modern%20Program%20Analysis%20-%20Insomni%27hack%202025.pdf)
+[Here are the slides](./A%20Slice%20of%20Modern%20Program%20Analysis%20-%20Insomni%27hack%202025.pdf) for the talk [@ElykDeer](https://github.com/ElykDeer) gave at Insomni'Hack 2025: ["A Slice of" Modern Program Analysis](https://www.youtube.com/watch?v=I0PoE0IdtmE)
