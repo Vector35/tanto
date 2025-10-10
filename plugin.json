@@ -8,7 +8,7 @@
   "api": [
     "python3"
   ],
-  "description": "Tantō slices functions to help you can understand them faster.",
+  "description": "Tantō slices programs so you can understand them faster.",
   "longdescription": "",
   "license": {
     "name": "MIT",
