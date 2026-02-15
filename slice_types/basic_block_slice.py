@@ -36,6 +36,7 @@ from PySide6.QtCore import Qt
 
 class BasicBlockSlice(Slice):
   def __init__(self, parent: 'tanto.tanto_view.TantoView'):
+    super().__init__()
     self.parent = parent
     self.bv = parent.bv
     self.flowgraph_widget = parent.flowgraph_widget
@@ -46,10 +47,10 @@ class BasicBlockSlice(Slice):
     self.included_blocks = []
     self.func = None
 
-    parent.register_for_basic_block("Include Block in Slice", self.include_block, lambda bv, bb: bb in self.excluded_blocks or bb not in self.included_blocks, "TantoGroup0", 0)
-    parent.register_for_basic_block("Exclude Block from Slice", self.exclude_block, lambda bv, bb: bb in self.included_blocks or bb not in self.excluded_blocks, "TantoGroup0", 1)
-    parent.register_for_basic_block("Reset Block State", self.reset_block, lambda bv, bb: bb in self.included_blocks or bb in self.excluded_blocks, "TantoGroup1", 2)
-    parent.register_for_binary_view("Clear All Block States", self.clear, lambda bv: len(self.included_blocks) + len(self.excluded_blocks) > 0, "TantoGroup2", 3)
+    self.register_for_basic_block("Include Block in Slice", self.include_block, lambda bv, bb: bb in self.excluded_blocks or bb not in self.included_blocks, "TantoGroup0", 0)
+    self.register_for_basic_block("Exclude Block from Slice", self.exclude_block, lambda bv, bb: bb in self.included_blocks or bb not in self.excluded_blocks, "TantoGroup0", 1)
+    self.register_for_basic_block("Reset Block State", self.reset_block, lambda bv, bb: bb in self.included_blocks or bb in self.excluded_blocks, "TantoGroup1", 2)
+    self.register_for_binary_view("Clear All Block States", self.clear, lambda bv: len(self.included_blocks) + len(self.excluded_blocks) > 0, "TantoGroup2", 3)
 
   def helperPaintEvent(self, event):
     p = QPainter(self.flowgraph_widget.viewport())

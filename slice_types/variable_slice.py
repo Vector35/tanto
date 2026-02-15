@@ -34,6 +34,7 @@ from PySide6.QtCore import Qt
 
 class VariableBlockSlice(Slice):
   def __init__(self, parent: 'tanto.tanto_view.TantoView'):
+    super().__init__()
     self.parent = parent
     self.bv = parent.bv
     self.flowgraph_widget = self.parent.flowgraph_widget
@@ -43,9 +44,9 @@ class VariableBlockSlice(Slice):
     self.variables = []
     self.func = None
 
-    parent.register_for_variable("Include Variable in Slice", self.include_variable, menu_group="TantoGroup0", menu_order=0)
-    parent.register_for_variable("Remove Variable from Slice", self.remove_variable, menu_group="TantoGroup0", menu_order=1)
-    parent.register_for_binary_view("Remove All Variables", self.clear, lambda bv: len(self.variables) > 0, "TantoGroup1", 2)
+    self.register_for_variable("Include Variable in Slice", self.include_variable, menu_group="TantoGroup0", menu_order=0)
+    self.register_for_variable("Remove Variable from Slice", self.remove_variable, menu_group="TantoGroup0", menu_order=1)
+    self.register_for_binary_view("Remove All Variables", self.clear, lambda bv: len(self.variables) > 0, "TantoGroup1", 2)
 
   def helperPaintEvent(self, event):
     p = QPainter(self.flowgraph_widget.viewport())

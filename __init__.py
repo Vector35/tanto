@@ -25,9 +25,49 @@ from .slices import *
 from .menus import *
 from .helpers import *
 from .slice_types import *
+from .api import *
 
 from binaryninja import Settings
 from binaryninjaui import ViewType
+from binaryninja.scriptingprovider import PythonScriptingProvider, PythonScriptingInstance
+
 
 Settings().register_group("tanto", "Tanto Settings")
 ViewType.registerViewType(tanto.tanto_view.TantoViewType())
+
+
+def _get_current_tanto_view(instance: PythonScriptingInstance):
+  view_frame = instance.interpreter.locals["current_ui_view_frame"]
+  current_view = instance.interpreter.locals["current_view"]
+  if view_frame != None and current_view != None:
+    view = view_frame.getViewForType(f"Tanto:{current_view.view_type}")
+    if view != None:
+      return TantoApiView(view)
+  return None
+
+
+PythonScriptingProvider.register_magic_variable(
+  "current_tanto_view",
+  _get_current_tanto_view,
+  depends_on=[
+    "current_view",
+    "current_ui_view",
+  ]
+)
+
+
+def _get_current_tanto_slice(instance: PythonScriptingInstance):
+  tv = instance.interpreter.locals["current_tanto_view"]
+  ts = tv.parent.current_slice
+  if ts != None:
+    return TantoApiSlice(ts)
+
+
+PythonScriptingProvider.register_magic_variable(
+  "current_tanto_slice",
+  _get_current_tanto_slice,
+  depends_on=[
+    "current_tanto_view",
+  ]
+)
+

@@ -31,6 +31,7 @@ from PySide6.QtGui import QDropEvent
 
 class DynamicCallGraph(tanto.slices.Slice):
   def __init__(self, parent: 'tanto.tanto_view.TantoView'):
+    super().__init__()
     self.parent = parent
     self.bv = parent.bv
     self.graph_funcs = set()
@@ -45,29 +46,32 @@ class DynamicCallGraph(tanto.slices.Slice):
     parent.flowgraph_widget.dragEnterEvent = self.dragEnterEvent
     parent.flowgraph_widget.dropEvent = self.dropEvent
 
-    parent.register_for_function("Include Function in Graph",
+    self.register_for_function("Include Function in Graph",
                                  self.include_function,
                                  lambda bv, func: self._to_source(func) not in self.graph_funcs,
                                  menu_group="TantoGroup0", menu_order=0)
 
-    parent.register_for_function("Exclude Function from Graph",
+    self.register_for_function("Exclude Function from Graph",
                                  self.exclude_function,
                                  lambda bv, func: self._to_source(func) in self.graph_funcs and func not in self.excluded_funcs,
                                  menu_group="TantoGroup0", menu_order=1)
 
-    parent.register_for_function("Include Callers",
+    self.register_for_function("Include Callers",
                                  self.include_callers,
                                  lambda bv, func: self._to_source(func) in self.graph_funcs,
                                  menu_group="TantoGroup1", menu_order=0)
-    parent.register_for_function("Include Callees",
+
+    self.register_for_function("Include Callees",
                                  self.include_callees,
                                  lambda bv, func: self._to_source(func) in self.graph_funcs,
                                  menu_group="TantoGroup1", menu_order=1)
-    parent.register_for_function("Include All Callers",
+
+    self.register_for_function("Include All Callers",
                                  self.include_all_callers,
                                  lambda bv, func: self._to_source(func) in self.graph_funcs,
                                  menu_group="TantoGroup2", menu_order=0)
-    parent.register_for_function("Include All Callees",
+
+    self.register_for_function("Include All Callees",
                                  self.include_all_callees,
                                  lambda bv, func: self._to_source(func) in self.graph_funcs,
                                  menu_group="TantoGroup2", menu_order=1)

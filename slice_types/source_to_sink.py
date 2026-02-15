@@ -35,10 +35,10 @@ class SourceToSinkGraph(tanto.slices.Slice):
 
     self.navigation_style = tanto.slices.NavigationStyle.FUNCTION_START
 
-    parent.register_for_function("Add Function as Source", self.add_function_as_source, menu_group="TantoGroup0", menu_order=0)
-    parent.register_for_function("Add Function as Sink", self.add_function_as_sink, menu_group="TantoGroup0", menu_order=1)
-    parent.register_for_function("Reset Function State", self.reset_function_state, menu_group="TantoGroup1", menu_order=2)
-    parent.register_for_binary_view("Clear All", self.clear_all, menu_group="TantoGroup2", menu_order=3)
+    self.register_for_function("Add Function as Source", self.add_function_as_source, menu_group="TantoGroup0", menu_order=0)
+    self.register_for_function("Add Function as Sink", self.add_function_as_sink, menu_group="TantoGroup0", menu_order=1)
+    self.register_for_function("Reset Function State", self.reset_function_state, menu_group="TantoGroup1", menu_order=2)
+    self.register_for_binary_view("Clear All", self.clear_all, menu_group="TantoGroup2", menu_order=3)
 
   def get_il_view_type(self) -> FunctionViewType:
     return FunctionViewType(FunctionGraphType.NormalFunctionGraph)

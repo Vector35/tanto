@@ -18,10 +18,16 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
+from typing import Callable, Optional, Tuple
 from enum import Enum
 
 from binaryninja import FlowGraph, FunctionViewType
+from binaryninja.binaryview import BinaryView
+from binaryninja.variable import Variable
 from binaryninja.enums import FunctionGraphType
+from binaryninja.log import log_warn
+
+import tanto
 
 
 #########
@@ -53,6 +59,9 @@ class UpdateStyle(Enum):
 
 
 class Slice():
+  def __init__(self):
+    self.actions: dict[str, Tuple[Callable[..., None], Optional[Callable[..., bool]]]] = {}
+
   # This is really the only function you need to implement
   def get_flowgraph(self) -> FlowGraph:
     raise NotImplementedError
@@ -82,3 +91,46 @@ class Slice():
   @update_style.setter
   def update_style(self, value):
     self._update_style = value
+  
+  def register_action(self, name: str, action: Callable[..., None], is_valid: Optional[Callable[..., bool]] = None):
+    self.actions[name] = (action, is_valid)
+
+  def register_for_binary_view(self, name: str,
+                               action: Callable[['BinaryView'], None],
+                               is_valid: Optional[Callable[['BinaryView'], bool]] = None,
+                               menu_group: str = "", menu_order: int = 0, api_accessible: bool = True):
+    if api_accessible:
+      self.register_action(name, action, is_valid)
+    return self.parent.register_for_binary_view(name, action, is_valid, menu_group, menu_order)
+  
+  def register_for_function(self, name: str,
+                            action: Callable[['BinaryView', 'tanto.helpers.AnyFunction'], None],
+                            is_valid: Optional[Callable[['BinaryView', 'tanto.helpers.AnyFunction'], bool]] = None,
+                            menu_group: str = "", menu_order: int = 0, api_accessible: bool = True):
+    if api_accessible:
+      self.register_action(name, action, is_valid)
+    return self.parent.register_for_function(name, action, is_valid, menu_group, menu_order)
+  
+  def register_for_basic_block(self, name: str,
+                               action: Callable[['BinaryView', 'tanto.helpers.AnyBasicBlock'], None],
+                               is_valid: Optional[Callable[['BinaryView', 'tanto.helpers.AnyBasicBlock'], bool]] = None,
+                               menu_group: str = "", menu_order: int = 0, api_accessible: bool = True):
+    if api_accessible:
+      self.register_action(name, action, is_valid)
+    return self.parent.register_for_basic_block(name, action, is_valid, menu_group, menu_order)
+  
+  def register_for_variable(self, name: str,
+                            action: Callable[['BinaryView', Variable], None],
+                            is_valid: Optional[Callable[['BinaryView', Variable], bool]] = None,
+                            menu_group: str = "", menu_order: int = 0, api_accessible: bool = True):
+    if api_accessible:
+      self.register_action(name, action, is_valid)
+    return self.parent.register_for_variable(name, action, is_valid, menu_group, menu_order)
+  
+  def register_for_address(self, name: str,
+                           action: Callable[['BinaryView', int], None],
+                           is_valid: Optional[Callable[['BinaryView', int], bool]] = None,
+                           menu_group: str = "", menu_order: int = 0, api_accessible: bool = True):
+    if api_accessible:
+      self.register_action(name, action, is_valid)
+    return self.parent.register_for_address(name, action, is_valid, menu_group, menu_order)

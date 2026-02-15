@@ -34,6 +34,7 @@ from binaryninja.enums import BranchType
 
 class FullCallGraph(tanto.slices.Slice):
   def __init__(self, parent: 'tanto.tanto_view.TantoView'):
+    super().__init__()
     self.bv = parent.bv
     self.navigation_style = tanto.slices.NavigationStyle.FUNCTION_START
 

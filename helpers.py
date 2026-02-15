@@ -20,14 +20,14 @@
 
 from binaryninjaui import UIContext
 
-from binaryninja import BinaryView
+from binaryninja import BinaryView, Variable
 from binaryninja import Function, LowLevelILFunction, MediumLevelILFunction, HighLevelILFunction
 from binaryninja import BasicBlock, LowLevelILBasicBlock, MediumLevelILBasicBlock, HighLevelILBasicBlock
 from binaryninja import LowLevelILInstruction, MediumLevelILInstruction, HighLevelILInstruction
 from binaryninja.log import log_error
 from binaryninja.enums import FunctionGraphType
 
-from typing import Union, Optional
+from typing import Union, Optional, Callable
 
 
 BN_INVALID_EXPR = 0xffffffffffffffff
@@ -37,6 +37,17 @@ ILFunction = Union[LowLevelILFunction, MediumLevelILFunction, HighLevelILFunctio
 AnyBasicBlock = Union[BasicBlock, LowLevelILBasicBlock, MediumLevelILBasicBlock, HighLevelILBasicBlock]
 ILBasicBlock = Union[LowLevelILBasicBlock, MediumLevelILBasicBlock, HighLevelILBasicBlock]
 ILInstruction = Union[LowLevelILInstruction, MediumLevelILInstruction, HighLevelILInstruction]
+
+BinaryViewAction = Callable[[BinaryView], None]
+BinaryViewValidator = Callable[[BinaryView], None]
+FunctionAction = Callable[[BinaryView, AnyFunction], None]
+FunctionValidator = Callable[[BinaryView, AnyFunction], bool]
+BasicBlockAction = Callable[[BinaryView, AnyBasicBlock], None]
+BasicBlockValidator = Callable[[BinaryView, AnyBasicBlock], bool]
+VariableAction = Callable[[BinaryView, Variable], None]
+VariableValidator = Callable[[BinaryView, Variable], bool]
+AddressAction = Callable[[BinaryView, int], None]
+AddressValidator = Callable[[BinaryView, int], bool]
 
 
 def get_disassembly_settings():

@@ -28,6 +28,7 @@ from binaryninja.enums import BranchType, EdgePenStyle, ThemeColor
 
 class ScatterSlice(tanto.slices.Slice):
   def __init__(self, parent: 'tanto.tanto_view.TantoView'):
+    super().__init__()
     self.navigation_style = tanto.slices.NavigationStyle.FUNCTION_START
     self.update_style = tanto.slices.UpdateStyle.ON_NAVIGATE
 
